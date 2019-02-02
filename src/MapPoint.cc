@@ -425,7 +425,6 @@ MapPoint::MapPoint():
 template<class Archive>
 void MapPoint::serialize(Archive &ar, const unsigned int version)
 {
-    unique_lock<mutex> lock_Global(mGlobalMutex);
     unique_lock<mutex> lock_Pos(mMutexPos);
     unique_lock<mutex> lock_Features(mMutexFeatures);
     ar & mnId & nNextId & mnFirstKFid & mnFirstFrame & nObs;
