@@ -519,6 +519,7 @@ vector<cv::KeyPoint> System::GetTrackedKeyPointsUn()
 
 void System::SaveMap(const string &filename)
 {
+    unique_lock<mutex>MapPointGlobal(MapPoint::mGlobalMutex);
     std::ofstream out(filename, std::ios_base::binary);
     if (!out)
     {
@@ -534,6 +535,7 @@ void System::SaveMap(const string &filename)
 }
 bool System::LoadMap(const string &filename)
 {
+    unique_lock<mutex>MapPointGlobal(MapPoint::mGlobalMutex);
     std::ifstream in(filename, std::ios_base::binary);
     if (!in)
     {
