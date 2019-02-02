@@ -277,3 +277,7 @@ mono_tum has been updated as a simple example of this functionality. An extra co
 I use boost_serialization library to serialize `Map`, `MapPoint`, `KeyFrame`,`KeyFrameDatabase`, `cv::Mat`, `DBoW2::BowVector`, `DBoW2::FeatureVector`. In brief, only the `ORBVector` isn't serialized.
 
 This feature is tested with boost 1.64 and it works fine mostly. There is still some occasional segmentfault to dig in.
+
+#### Known Bugs:
+
+Map Points and KeyFrames seem are not deleted from Map but only marked as `bad` instead. So there will be more and more useless data structure residing inside memory and Map size will keep growing.
