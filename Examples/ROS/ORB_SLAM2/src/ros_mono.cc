@@ -24,23 +24,38 @@
 #include<fstream>
 #include<chrono>
 
-#include<ros/ros.h>
+#include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
+#include <message_filters/subscriber.h>
+#include <message_filters/time_synchronizer.h>
+#include <message_filters/sync_policies/approximate_time.h>
+
+#include <Eigen/Dense>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
 
 #include<opencv2/core/core.hpp>
+#include <cv_bridge/cv_bridge.h>
+#include <opencv2/core/eigen.hpp>
 
 #include"../../../include/System.h"
 
+#include"common.h"
 using namespace std;
 
 class ImageGrabber
 {
 public:
-    ImageGrabber(ORB_SLAM2::System* pSLAM):mpSLAM(pSLAM){}
+    ImageGrabber(ORB_SLAM2::System* pSLAM, ros::NodeHandle* nh):mpSLAM(pSLAM), pnh(nh)
+  {
+    mOdomPub = pnh->advertise<nav_msgs::Odometry>("/orb_slam/odom", 1);
+  }
 
     void GrabImage(const sensor_msgs::ImageConstPtr& msg);
 
     ORB_SLAM2::System* mpSLAM;
+    ros::NodeHandle* pnh;
+    ros::Publisher mOdomPub;
 };
 
 int main(int argc, char **argv)
@@ -56,11 +71,10 @@ int main(int argc, char **argv)
     }    
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true);
-
-    ImageGrabber igb(&SLAM);
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true,true);
 
     ros::NodeHandle nodeHandler;
+    ImageGrabber igb(&SLAM, &nodeHandler);
     ros::Subscriber sub = nodeHandler.subscribe("/camera/image_raw", 1, &ImageGrabber::GrabImage,&igb);
 
     ros::spin();
@@ -91,6 +105,12 @@ void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
     }
 
     mpSLAM->TrackMonocular(cv_ptr->image,cv_ptr->header.stamp.toSec());
+    cv::Mat cvTCW;
+    nav_msgs::Odometry odom_msg;
+    cvTCW = mpSLAM->TrackMonocular(cv_ptr->image,cv_ptr->header.stamp.toSec());
+    if(!cvTCW.empty())
+    {
+      common::CreateOdomMsg(odom_msg,msg,cvTCW);
+      mOdomPub.publish(odom_msg);
+    }
 }
-
-

@@ -36,6 +36,10 @@
 #include "ORBVocabulary.h"
 #include "Viewer.h"
 
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "BoostArchiver.h"
 // for map file io
 #include <fstream>

@@ -24,26 +24,39 @@
 #include<fstream>
 #include<chrono>
 
-#include<ros/ros.h>
+#include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/time_synchronizer.h>
 #include <message_filters/sync_policies/approximate_time.h>
 
+#include <Eigen/Dense>
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+
 #include<opencv2/core/core.hpp>
 
+#include <cv_bridge/cv_bridge.h>
+#include <opencv2/core/eigen.hpp>
+
 #include"../../../include/System.h"
+
+#include"common.h"
 
 using namespace std;
 
 class ImageGrabber
 {
 public:
-    ImageGrabber(ORB_SLAM2::System* pSLAM):mpSLAM(pSLAM){}
-
+    ImageGrabber(ORB_SLAM2::System* pSLAM, ros::NodeHandle* nh):mpSLAM(pSLAM), pnh(nh)
+    {
+        mOdomPub = pnh->advertise<nav_msgs::Odometry>("/orb_slam/odom", 1);
+    }
     void GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::ImageConstPtr& msgD);
 
     ORB_SLAM2::System* mpSLAM;
+    ros::NodeHandle* pnh;
+    ros::Publisher mOdomPub;
 };
 
 int main(int argc, char **argv)
@@ -61,9 +74,9 @@ int main(int argc, char **argv)
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::RGBD,true);
 
-    ImageGrabber igb(&SLAM);
-
     ros::NodeHandle nh;
+
+    ImageGrabber igb(&SLAM, &nh);
 
     message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, "/camera/rgb/image_raw", 1);
     message_filters::Subscriber<sensor_msgs::Image> depth_sub(nh, "camera/depth_registered/image_raw", 1);
@@ -109,7 +122,15 @@ void ImageGrabber::GrabRGBD(const sensor_msgs::ImageConstPtr& msgRGB,const senso
         return;
     }
 
-    mpSLAM->TrackRGBD(cv_ptrRGB->image,cv_ptrD->image,cv_ptrRGB->header.stamp.toSec());
-}
+    cv::Mat cvTCW;
+    nav_msgs::Odometry odom_msg;
 
+    cvTCW = mpSLAM->TrackRGBD(cv_ptrRGB->image,cv_ptrD->image,cv_ptrRGB->header.stamp.toSec());
+
+    if(!cvTCW.empty())
+    {
+      common::CreateOdomMsg(odom_msg,msgRGB,cvTCW);
+      mOdomPub.publish(odom_msg);
+    }
+}
 
